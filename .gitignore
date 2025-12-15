@@ -1,68 +1,62 @@
-## =========================
-## .NET / ASP.NET Core
-## =========================
-
-# Build results
-bin/
-obj/
-
-# Rider / VS Code / Visual Studio
+# ====================
+# Visual Studio
+# ====================
 .vs/
-.vscode/
-.idea/
-
-# User-specific files
 *.user
-*.rsuser
 *.suo
 *.userosscache
 *.sln.docstates
 
-# Logs
-*.log
+# ====================
+# Build Folders
+# ====================
+bin/
+obj/
+out/
+TestResults/
 
-# OS files
-.DS_Store
-Thumbs.db
+# ====================
+# Rider / JetBrains IDE
+# ====================
+.idea/
+*.iml
 
-# Publish output
-publish/
-appsettings.*.json
-
-# Environment files
-.env
-.env.*
-
-# Secrets
-secrets.json
-
-# SQLite / Local DB
-*.db
-*.db-shm
-*.db-wal
-
-# Node modules (if frontend added later)
+# ====================
+# Node / React Frontend
+# ====================
 node_modules/
+dist/
+build/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# Coverage
-coverage/
-*.coverage
-*.coveragexml
+# ====================
+# Logs
+# ====================
+*.log
+logs/
+*.vsix
 
-# NuGet
-.nuget/packages/
-
-# Temporary files
+# ====================
+# Temporary Files
+# ====================
 *.tmp
 *.temp
-*.bak
+*.cache
+*.DS_Store
+Thumbs.db
 
-# JetBrains Rider
-.idea/
+# ====================
+# MongoDB / Database Files (if any local dumps)
+# ====================
+*.bson
+*.dump
 
-# Mac
-.AppleDouble
-.LSOverride
-
-# Windows
-Desktop.ini
+# ====================
+# Others
+# ====================
+*.zip
+*.tar.gz
