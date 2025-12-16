@@ -8,13 +8,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<MongoDbSettings>(
     builder.Configuration.GetSection("MongoDB"));
 
+builder.Services.AddSingleton<UserService>();
+builder.Services.AddSingleton<ChatService>();
 builder.Services.AddSingleton<IMongoClient>(sp =>
 {
-    var settings = builder.Configuration
-        .GetSection("MongoDB")
-        .Get<MongoDbSettings>();
+    var settings = sp.GetRequiredService<
+        Microsoft.Extensions.Options.IOptions<MongoDbSettings>>().Value;
 
-    return new MongoClient(settings!.ConnectionString);
+    return new MongoClient(settings.ConnectionString);
 });
 
 // =================== Services ===================
@@ -47,6 +48,12 @@ if (app.Environment.IsDevelopment())
 app.UseCors();
 
 app.UseAuthorization();
+
+var mongoSettings = builder.Configuration
+    .GetSection("MongoDB")
+    .Get<MongoDbSettings>();
+
+Console.WriteLine($"MongoDB DB: {mongoSettings?.DatabaseName}");
 
 app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");
