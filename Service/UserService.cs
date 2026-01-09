@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using SignalRChatApp.Models;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -14,14 +15,40 @@ public class UserService
         _users = database.GetCollection<ChatUser>("Users");
     }
 
-    public async Task<ChatUser> GetOrCreateUser(string username)
+    // REGISTER
+    public async Task<ChatUser> Register(string username, string email, string password)
     {
-        var user = await _users.Find(u => u.Username == username).FirstOrDefaultAsync();
-        if (user == null)
+        var existingUser = await _users
+            .Find(u => u.Email == email)
+            .FirstOrDefaultAsync();
+
+        if (existingUser != null)
+            throw new Exception("Email already registered");
+
+        var user = new ChatUser
         {
-            user = new ChatUser { Username = username };
-            await _users.InsertOneAsync(user);
-        }
+            Username = username,
+            Email = email,
+            PasswordHash = PasswordHasher.HashPassword(password)
+        };
+
+        await _users.InsertOneAsync(user);
+        return user;
+    }
+
+    // LOGIN
+    public async Task<ChatUser> Login(string email, string password)
+    {
+        var user = await _users
+            .Find(u => u.Email == email)
+            .FirstOrDefaultAsync();
+
+        if (user == null)
+            throw new Exception("Invalid email or password");
+
+        if (!PasswordHasher.Verify(password, user.PasswordHash))
+            throw new Exception("Invalid email or password");
+
         return user;
     }
 

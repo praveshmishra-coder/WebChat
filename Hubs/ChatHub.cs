@@ -1,12 +1,15 @@
 ﻿using SignalRChatApp.Models;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Authorization;
 using System.Collections.Concurrent;
 using System.Linq;
-//using System.Runtime.Remoting.Contexts;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace SignalRChatApp.Hubs
 {
+    [Authorize]
     public class ChatHub : Hub
     {
         private readonly UserService _userService;
@@ -22,30 +25,44 @@ namespace SignalRChatApp.Hubs
             _chatService = chatService;
         }
 
-        public async Task RegisterUser(string username)
+        // =================== HELPERS ===================
+        private string GetUsername()
         {
-            // Save user in DB
-            await _userService.GetOrCreateUser(username);
-
-            // Add to in-memory dictionary for active connections
-            Users[username] = Context.ConnectionId;
-
-            // Send updated active users list
-            var allUsers = await _userService.GetAllUsers();
-            await Clients.All.SendAsync("UpdateUserList", allUsers.Select(u => u.Username).ToList());
+            return Context.User?
+                .Claims
+                .FirstOrDefault(c => c.Type == ClaimTypes.Name || c.Type == JwtRegisteredClaimNames.UniqueName)
+                ?.Value!;
         }
 
+        // =================== REGISTER USER ===================
+        public async Task RegisterUser()
+        {
+            var username = GetUsername();
+            if (string.IsNullOrEmpty(username))
+                return;
+
+            Users[username] = Context.ConnectionId;
+
+            var allUsers = await _userService.GetAllUsers();
+            await Clients.All.SendAsync(
+                "UpdateUserList",
+                allUsers.Select(u => u.Username).ToList()
+            );
+        }
+
+        // =================== SEND PRIVATE MESSAGE ===================
         public async Task SendPrivateMessage(string toUser, string message)
         {
-            var fromUser = Context.GetHttpContext()?.Request.Query["username"];
+            var fromUser = GetUsername();
+            if (string.IsNullOrEmpty(fromUser))
+                return;
 
-            // Send to client if online
             if (Users.TryGetValue(toUser, out var connectionId))
             {
-                await Clients.Client(connectionId).SendAsync("ReceiveMessage", fromUser, message);
+                await Clients.Client(connectionId)
+                    .SendAsync("ReceiveMessage", fromUser, message);
             }
 
-            // Save message in DB
             await _chatService.SaveMessage(new ChatMessage
             {
                 FromUser = fromUser,
@@ -54,6 +71,17 @@ namespace SignalRChatApp.Hubs
             });
         }
 
+        // =================== CHAT HISTORY ===================
+        public async Task<List<ChatMessage>> GetChatHistory(string withUser)
+        {
+            var fromUser = GetUsername();
+            if (string.IsNullOrEmpty(fromUser))
+                return new List<ChatMessage>();
+
+            return await _chatService.GetMessages(fromUser, withUser);
+        }
+
+        // =================== DISCONNECT ===================
         public override async Task OnDisconnectedAsync(System.Exception? exception)
         {
             var user = Users.FirstOrDefault(x => x.Value == Context.ConnectionId);
@@ -61,18 +89,8 @@ namespace SignalRChatApp.Hubs
             {
                 Users.TryRemove(user.Key, out _);
             }
+
             await base.OnDisconnectedAsync(exception);
         }
-
-        public async Task<List<ChatMessage>> GetChatHistory(string withUser)
-        {
-            var fromUser = Context.GetHttpContext()?.Request.Query["username"];
-
-            if (string.IsNullOrEmpty(fromUser))
-                return new List<ChatMessage>();
-
-            return await _chatService.GetMessages(fromUser!, withUser);
-        }
     }
-
 }
